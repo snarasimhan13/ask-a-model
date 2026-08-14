@@ -1,52 +1,67 @@
 from src.loader import load_papers
 from src.chunker import chunk_text
-from src.embeddings import embed_texts
-from src.retriever import retrieve
+from src.vector_store import (
+    get_collection,
+    collection_is_empty,
+    index_chunks,
+    retrieve,
+)
 from src.generator import generate_answer
-
 
 PAPER_DIRECTORY = "data/papers"
 
 
 def main():
 
-    print("\nLoading papers...\n")
+    collection = get_collection()
 
-    pages = load_papers(PAPER_DIRECTORY)
+    if collection_is_empty(collection):
 
-    print(f"\nExtracted {len(pages)} pages.")
+        print("\nNo existing Chroma index found.")
+        print("Building index...\n")
 
-    print("\nChunking papers...\n")
+        pages = load_papers(
+            PAPER_DIRECTORY
+        )
 
-    chunks = chunk_text(
-        pages,
-        chunk_size=400,
-        overlap=50,
-    )
+        print(
+            f"\nExtracted {len(pages)} pages."
+        )
 
-    print(f"Created {len(chunks)} chunks.")
+        chunks = chunk_text(
+            pages,
+            chunk_size=400,
+            overlap=50,
+        )
 
-    print("\nEmbedding chunks...")
-    print("This can take a bit on the first run.\n")
+        print(
+            f"Created {len(chunks)} chunks."
+        )
 
-    chunk_texts = [
-        chunk["text"]
-        for chunk in chunks
-    ]
+        index_chunks(
+            collection,
+            chunks,
+        )
 
-    chunk_embeddings = embed_texts(chunk_texts)
+        print(
+            "\nIndex saved to ChromaDB."
+        )
 
-    print(
-        f"Embedding matrix shape: "
-        f"{chunk_embeddings.shape}"
-    )
+    else:
+
+        print(
+            f"\nLoaded existing Chroma index "
+            f"with {collection.count()} chunks."
+        )
 
     print("\nAsk questions about your papers.")
     print("Type 'quit' to exit.\n")
 
     while True:
 
-        question = input("Question: ").strip()
+        question = input(
+            "Question: "
+        ).strip()
 
         if question.lower() in {
             "quit",
@@ -59,23 +74,26 @@ def main():
             continue
 
         retrieved_chunks = retrieve(
+            collection=collection,
             question=question,
-            chunks=chunks,
-            chunk_embeddings=chunk_embeddings,
             top_k=5,
         )
 
-        print("\n--- Retrieved chunks ---\n")
+        print(
+            "\n--- Retrieved chunks ---\n"
+        )
 
         for i, chunk in enumerate(
             retrieved_chunks,
             start=1,
         ):
+
             print(
                 f"{i}. "
                 f"{chunk['source']} "
                 f"page {chunk['page']} "
-                f"(similarity={chunk['score']:.3f})"
+                f"(distance="
+                f"{chunk['distance']:.3f})"
             )
 
         print("\n--- Answer ---\n")
@@ -86,7 +104,10 @@ def main():
         )
 
         print(answer)
-        print("\n" + "=" * 80 + "\n")
+
+        print(
+            "\n" + "=" * 80 + "\n"
+        )
 
 
 if __name__ == "__main__":
