@@ -11,6 +11,7 @@ def build_context(chunks: list[dict]) -> str:
         [SOURCE {i}]
         Paper: {chunk["source"]}
         Page: {chunk["page"]}
+        Section = {chunk["section"]}
 
         {chunk["text"]}
         """

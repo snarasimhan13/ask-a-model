@@ -8,21 +8,18 @@ from src.vector_store import (
 )
 from src.generator import generate_answer
 
+
 PAPER_DIRECTORY = "data/papers"
 
 
 def main():
-
     collection = get_collection()
 
     if collection_is_empty(collection):
-
         print("\nNo existing Chroma index found.")
         print("Building index...\n")
 
-        pages = load_papers(
-            PAPER_DIRECTORY
-        )
+        pages = load_papers(PAPER_DIRECTORY)
 
         print(
             f"\nExtracted {len(pages)} pages."
@@ -30,8 +27,7 @@ def main():
 
         chunks = chunk_text(
             pages,
-            chunk_size=400,
-            overlap=50,
+            chunk_size=250,
         )
 
         print(
@@ -48,7 +44,6 @@ def main():
         )
 
     else:
-
         print(
             f"\nLoaded existing Chroma index "
             f"with {collection.count()} chunks."
@@ -58,7 +53,6 @@ def main():
     print("Type 'quit' to exit.\n")
 
     while True:
-
         question = input(
             "Question: "
         ).strip()
@@ -87,13 +81,12 @@ def main():
             retrieved_chunks,
             start=1,
         ):
-
             print(
                 f"{i}. "
                 f"{chunk['source']} "
                 f"page {chunk['page']} "
-                f"(distance="
-                f"{chunk['distance']:.3f})"
+                f"| {chunk['section']} "
+                f"| distance={chunk['distance']:.3f}"
             )
 
         print("\n--- Answer ---\n")

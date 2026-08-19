@@ -47,6 +47,7 @@ def index_chunks(
             {
                 "source": chunk["source"],
                 "page": chunk["page"],
+                "section": chunk["section"],
             }
         )
 
@@ -83,6 +84,7 @@ def retrieve(
 
     # formats the info properly 
     for i in range(len(results["documents"][0])):
+        metadata = results["metadatas"][0][1]
         retrieved_chunks.append(
             {
                 "text":
@@ -97,6 +99,8 @@ def retrieve(
                     results["metadatas"][0][i][
                         "page"
                     ],
+                "section":
+                    metadata["section"],
 
                 "distance":
                     results["distances"][0][i],
