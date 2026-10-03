@@ -1,48 +1,46 @@
-from src.loader import load_papers
+from src.loader import load_papers_interactive
 from src.chunker import chunk_text
 from src.vector_store import (
     get_collection,
     collection_is_empty,
     index_chunks,
+    reset_collection,
     retrieve,
 )
 from src.generator import generate_answer
 
 
-PAPER_DIRECTORY = "data/papers"
+def build_index(collection) -> None:
+    """
+    Prompt the user for PDFs, chunk them, and add them
+    to the given Chroma collection.
+    """
+    pages = load_papers_interactive()
+
+    print(f"\nExtracted {len(pages)} pages.")
+
+    chunks = chunk_text(
+        pages,
+        chunk_size=250,
+    )
+
+    print(f"Created {len(chunks)} chunks.")
+
+    index_chunks(
+        collection,
+        chunks,
+    )
+
+    print("\nIndex saved to ChromaDB.")
 
 
 def main():
-    collection = get_collection()
+    client, collection = get_collection()
 
     if collection_is_empty(collection):
         print("\nNo existing Chroma index found.")
-        print("Building index...\n")
-
-        pages = load_papers(PAPER_DIRECTORY)
-
-        print(
-            f"\nExtracted {len(pages)} pages."
-        )
-
-        chunks = chunk_text(
-            pages,
-            chunk_size=250,
-        )
-
-        print(
-            f"Created {len(chunks)} chunks."
-        )
-
-        index_chunks(
-            collection,
-            chunks,
-        )
-
-        print(
-            "\nIndex saved to ChromaDB."
-        )
-
+        print("Let's add some papers.\n")
+        build_index(collection)
     else:
         print(
             f"\nLoaded existing Chroma index "
@@ -50,19 +48,31 @@ def main():
         )
 
     print("\nAsk questions about your papers.")
+    print("Type '--reset' to start over with new papers.")
     print("Type 'quit' to exit.\n")
 
     while True:
-        question = input(
-            "Question: "
-        ).strip()
-
-        if question.lower() in {
-            "quit",
-            "exit",
-            "q",
-        }:
+        try:
+            question = input("Question: ").strip()
+        except EOFError:
             break
+
+        if question.lower() in {"quit", "exit", "q"}:
+            break
+
+        if question == "--reset":
+            print("\nClearing vector DB...")
+            collection = reset_collection(client)
+            print("Done. Let's add new papers.\n")
+            build_index(collection)
+            print(
+                "\nAsk questions about your papers."
+            )
+            print(
+                "Type '--reset' to start over, "
+                "or 'quit' to exit.\n"
+            )
+            continue
 
         if not question:
             continue
@@ -73,9 +83,7 @@ def main():
             top_k=5,
         )
 
-        print(
-            "\n--- Retrieved chunks ---\n"
-        )
+        print("\n--- Retrieved chunks ---\n")
 
         for i, chunk in enumerate(
             retrieved_chunks,
@@ -98,9 +106,7 @@ def main():
 
         print(answer)
 
-        print(
-            "\n" + "=" * 80 + "\n"
-        )
+        print("\n" + "=" * 80 + "\n")
 
 
 if __name__ == "__main__":

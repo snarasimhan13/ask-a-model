@@ -8,18 +8,43 @@ COLLECTION_NAME = "research_papers"
 
 
 def get_collection():
+    """
+    Return (client, collection). The client is needed later
+    to delete/recreate the collection on --reset.
+    """
     client = chromadb.PersistentClient(
-        path="chroma_db"
+        path=CHROMA_PATH,
     )
 
     collection = client.get_or_create_collection(
-        name="research_papers"
+        name=COLLECTION_NAME,
     )
 
-    return collection
+    return client, collection
+
 
 def collection_is_empty(collection) -> bool:
     return collection.count() == 0
+
+
+def reset_collection(client):
+    """
+    Delete the existing collection and return a fresh, empty one.
+
+    Chroma keeps file handles open on the persistent directory,
+    so we delete the collection through the client rather than
+    removing chroma_db/ from disk.
+    """
+    try:
+        client.delete_collection(COLLECTION_NAME)
+    except Exception:
+        # collection may not exist yet; that's fine
+        pass
+
+    return client.get_or_create_collection(
+        name=COLLECTION_NAME,
+    )
+
 
 def index_chunks(
     collection,
@@ -58,6 +83,7 @@ def index_chunks(
         metadatas=metadatas,
     )
 
+
 def retrieve(
     collection,
     question: str,
@@ -82,28 +108,16 @@ def retrieve(
 
     retrieved_chunks = []
 
-    # formats the info properly 
+    # formats the info properly
     for i in range(len(results["documents"][0])):
-        metadata = results["metadatas"][0][1]
+        metadata = results["metadatas"][0][i]
         retrieved_chunks.append(
             {
-                "text":
-                    results["documents"][0][i],
-
-                "source":
-                    results["metadatas"][0][i][
-                        "source"
-                    ],
-
-                "page":
-                    results["metadatas"][0][i][
-                        "page"
-                    ],
-                "section":
-                    metadata["section"],
-
-                "distance":
-                    results["distances"][0][i],
+                "text": results["documents"][0][i],
+                "source": metadata["source"],
+                "page": metadata["page"],
+                "section": metadata["section"],
+                "distance": results["distances"][0][i],
             }
         )
 
